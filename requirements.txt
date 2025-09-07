@@ -1,0 +1,33 @@
+# Python依赖包列表
+
+# Web框架
+fastapi>=0.95.0
+uvicorn>=0.22.0
+
+# AI框架
+langchain>=0.3.0
+openai>=1.0.0
+
+# 数据验证
+pydantic>=2.0.0
+
+# Git操作
+gitpython>=3.1.30
+
+# HTTP请求
+requests>=2.31.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 测试
+pytest>=7.3.0
+pytest-cov>=4.1.0
+
+# 工具库
+pyyaml>=6.0
+tqdm>=4.65.0
+
+# 解析工具
+beautifulsoup4>=4.12.0
+lxml>=4.9.2

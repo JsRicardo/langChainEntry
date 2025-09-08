@@ -6,7 +6,12 @@
   "ai": {
     "api_key": "your-ai-api-key",
     "model": "gpt-4",
-    "temperature": 0.3
+    "temperature": 0.3,
+    "deepseek": {
+      "model": "deepseek-chat",
+      "base_url": "http://localhost:8080/v1",
+      "api_key": "your-deepseek-api-key"
+    }
   },
   "notification": {
     "wecom": {

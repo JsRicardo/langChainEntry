@@ -7,21 +7,12 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 class ConfigManager:
-    """配置管理器，负责加载和管理系统配置"""
-    
     def __init__(self):
         """初始化配置管理器"""
         self.config = {}
-        # 加载环境变量
         load_dotenv()
     
     def load_config(self, config_path: str = "configs/config.json") -> None:
-        """加载配置文件
-        
-        Args:
-            config_path: 配置文件路径
-        """
-        # 尝试从不同位置加载配置文件
         possible_paths = [
             config_path,
             os.path.join(os.getcwd(), config_path),
@@ -49,7 +40,6 @@ class ConfigManager:
         self._override_with_env_vars()
     
     def _override_with_env_vars(self) -> None:
-        """用环境变量覆盖配置"""
         # 企业微信配置
         wecom_webhook = os.environ.get("WECOM_WEBHOOK_URL")
         if wecom_webhook:
@@ -84,15 +74,6 @@ class ConfigManager:
             logger.info("从环境变量覆盖GitLab API URL配置")
     
     def get(self, key: str, default: Any = None) -> Any:
-        """获取配置值
-        
-        Args:
-            key: 配置键，支持点号分隔的嵌套键，如 "notification.wecom.webhook_url"
-            default: 默认值，当配置不存在时返回
-            
-        Returns:
-            配置值或默认值
-        """
         keys = key.split(".")
         value = self.config
         
@@ -108,12 +89,6 @@ class ConfigManager:
             return default
     
     def set(self, key: str, value: Any) -> None:
-        """设置配置值
-        
-        Args:
-            key: 配置键
-            value: 配置值
-        """
         keys = key.split(".")
         config = self.config
         
@@ -125,47 +100,18 @@ class ConfigManager:
         config[keys[-1]] = value
     
     def get_all(self) -> Dict[str, Any]:
-        """获取所有配置
-        
-        Returns:
-            所有配置的字典
-        """
         return self.config.copy()
 
-# 全局配置管理器实例
 global_config = ConfigManager()
 
-# 初始化函数
 def init_config(config_path: Optional[str] = None) -> None:
-    """初始化配置管理器
-    
-    Args:
-        config_path: 可选的配置文件路径
-    """
     if config_path:
         global_config.load_config(config_path)
     else:
         global_config.load_config()
 
-# 获取配置的便捷函数
 def get_config(key: str, default: Any = None) -> Any:
-    """便捷获取配置值
-    
-    Args:
-        key: 配置键
-        default: 默认值
-        
-    Returns:
-        配置值或默认值
-    """
     return global_config.get(key, default)
 
-# 设置配置的便捷函数
 def set_config(key: str, value: Any) -> None:
-    """便捷设置配置值
-    
-    Args:
-        key: 配置键
-        value: 配置值
-    """
     global_config.set(key, value)

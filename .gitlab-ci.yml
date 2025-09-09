@@ -1,0 +1,60 @@
+# GitLab CI/CD 配置文件
+# 当指定分支有代码变更时，触发webhook通知代码变更分析系统
+
+stages:
+  - notify
+
+# 通知代码变更分析系统的作业
+notify_code_change:
+  stage: notify
+  script:
+    - |
+      # 构造通知数据
+      COMMIT_INFO=$(curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/repository/commits/$CI_COMMIT_SHA")
+      AUTHOR_NAME=$(echo $COMMIT_INFO | jq -r '.author_name')
+      COMMIT_MESSAGE=$(echo $COMMIT_INFO | jq -r '.message')
+      
+      # 准备webhook数据
+      WEBHOOK_DATA=$(cat << EOF
+      {
+        "event_name": "push",
+        "user_name": "$AUTHOR_NAME",
+        "ref": "refs/heads/$CI_COMMIT_BRANCH",
+        "project_id": $CI_PROJECT_ID,
+        "project": {
+          "name": "$CI_PROJECT_NAME"
+        },
+        "commits": [
+          {
+            "id": "$CI_COMMIT_SHA",
+            "author": {
+              "name": "$AUTHOR_NAME"
+            },
+            "message": "$COMMIT_MESSAGE",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+        ],
+        "total_commits_count": 1
+      }
+      EOF
+      )
+      
+      # 发送webhook通知
+      echo "发送webhook通知到 $WEBHOOK_URL"
+      curl --location --request POST "$WEBHOOK_URL/webhook/gitlab" \
+        --header "Content-Type: application/json" \
+        --header "X-Gitlab-Token: $GITLAB_WEBHOOK_TOKEN" \
+        --data-raw "$WEBHOOK_DATA"
+      
+      echo "webhook通知发送完成"
+  rules:
+    # 仅在指定分支上触发
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "develop"'
+      when: on_success
+  variables:
+    # 需要在GitLab CI/CD设置中配置这些变量
+    # WEBHOOK_URL: 代码变更分析系统的URL
+    # GITLAB_WEBHOOK_TOKEN: webhook验证token
+    # GITLAB_TOKEN: 用于API访问的GitLab个人访问令牌
+  tags:
+    - docker

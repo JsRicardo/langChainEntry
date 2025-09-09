@@ -1,4 +1,8 @@
 {
+  "webhook": {
+    "allowed_branches": ["main", "master", "develop"],
+    "gitlab_token": "your-webhook-token"
+  },
   "gitlab": {
     "api_url": "https://gitlab.example.com/api/v4",
     "token": "your-gitlab-token"

@@ -1,5 +1,5 @@
-import requests
 import json
+import requests
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -101,80 +101,139 @@ class WeComNotificationService:
             file_changes: 文件变更列表
             impact_analysis: 影响分析结果
             test_suggestions: 测试建议列表
-            links: 相关链接
+            links: 相关链接字典
             
         Returns:
-            Markdown格式的报告内容
+            str: Markdown格式的报告内容
         """
-        # 构建提交信息部分
-        report = "# 代码变更影响分析报告\n\n"
-        report += "## 变更基本信息\n"
-        report += f"- **提交人**: {commit_info.get('author', '未知')}\n"
-        report += f"- **提交时间**: {commit_info.get('time', '未知')}\n"
-        report += f"- **分支**: {commit_info.get('branch', '未知')}\n"
-        report += f"- **提交信息**: {commit_info.get('message', '无')}\n\n"
+        # 构建报告头部
+        report = []
+        report.append("# 代码变更分析报告")
+        report.append("")
         
-        # 构建文件变更部分
-        report += "## 变更文件列表\n"
-        for file in file_changes:
-            file_path = file.get('path', '未知文件')
-            change_type = file.get('type', '修改')
-            report += f"- `{file_path}` ({change_type})\n"
-        report += "\n"
+        # 提交信息部分
+        report.append("## 提交信息")
+        report.append(f"- **提交人**: {commit_info.get('author', '未知')}")
+        report.append(f"- **提交时间**: {commit_info.get('timestamp', '未知')}")
+        report.append(f"- **提交信息**: {commit_info.get('message', '无')}")
+        report.append(f"- **分支**: {commit_info.get('branch', '未知')}")
+        report.append("")
         
-        # 构建影响范围分析部分
-        report += "## 影响范围分析\n"
-        report += "### 前端影响\n"
-        affected_pages = impact_analysis.get('affected_pages', [])
-        if affected_pages:
-            pages_str = "、".join(affected_pages)
-            report += f"- **受影响页面**: {pages_str}\n"
+        # 文件变更部分
+        report.append("## 文件变更")
+        if file_changes:
+            for file in file_changes[:5]:  # 只显示前5个文件，避免信息过多
+                status = file.get('status', 'unknown')
+                filename = file.get('path', '未知文件')
+                report.append(f"- {status.upper()}: `{filename}`")
+            if len(file_changes) > 5:
+                report.append(f"- 还有 {len(file_changes) - 5} 个文件变更，详见GitLab")
         else:
-            report += "- **受影响页面**: 无明确页面影响\n"
+            report.append("- 暂无文件变更")
+        report.append("")
+        
+        # 影响分析部分
+        report.append("## 影响分析")
+        if impact_analysis:
+            # 风险等级
+            risk_level = impact_analysis.get('risk_level', '未知')
+            risk_emoji = "⚠️" if risk_level in ['高', 'medium', 'high'] else "✅" if risk_level == '低' else "​"
+            report.append(f"- **风险等级**: {risk_emoji} {risk_level}")
             
-        affected_components = impact_analysis.get('affected_components', [])
-        if affected_components:
-            components_str = "、".join(affected_components)
-            report += f"- **受影响组件**: {components_str}\n"
+            # 模块影响
+            module_impact = impact_analysis.get('module_impact', [])
+            if module_impact:
+                report.append("- **影响模块**: " + ", ".join(module_impact))
+            
+            # 接口影响
+            interface_impact = impact_analysis.get('interface_impact', [])
+            if interface_impact:
+                report.append("- **影响接口**: " + ", ".join(interface_impact))
+            
+            # 业务影响
+            business_impact = impact_analysis.get('business_impact', '')
+            if business_impact:
+                report.append(f"- **业务影响**: {business_impact}")
         else:
-            report += "- **受影响组件**: 无明确组件影响\n"
-            
-        impact_score = impact_analysis.get('impact_score', 0)
-        impact_level = "低" if impact_score < 30 else "中" if impact_score < 70 else "高"
-        report += f"- **影响程度**: {impact_level}\n\n"
+            report.append("- 暂无影响分析结果")
+        report.append("")
         
-        # 构建潜在风险点部分
-        risk_points = impact_analysis.get('risk_points', [])
-        if risk_points:
-            report += "### 潜在风险点\n"
-            for risk in risk_points:
-                report += f"- {risk}\n"
-            report += "\n"
-        
-        # 构建测试建议部分
+        # 测试建议部分
+        report.append("## 测试建议")
         if test_suggestions:
-            report += "## 测试建议\n"
-            for i, suggestion in enumerate(test_suggestions, 1):
-                report += f"{i}. {suggestion}\n"
-            report += "\n"
+            for suggestion in test_suggestions:
+                report.append(f"- {suggestion}")
+        else:
+            report.append("- 暂无测试建议")
+        report.append("")
         
-        # 构建关联信息部分
+        # 相关链接部分
+        report.append("## 相关链接")
         if links:
-            report += "## 关联信息\n"
-            for link_text, link_url in links.items():
-                report += f"- [{link_text}]({link_url})\n"
+            for link_name, link_url in links.items():
+                report.append(f"- [{link_name}]({link_url})")
+        report.append("")
         
-        return report
+        # 添加生成时间
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        report.append(f"*报告生成时间: {current_time}*")
+        
+        return "\n".join(report)
 
-# 通知服务工厂函数
-def create_wecom_notification_service(config_manager):
-    """创建企业微信通知服务实例
+
+def create_wecom_notification_service() -> WeComNotificationService:
+    """创建企业微信通知服务实例的工厂函数
     
-    Args:
-        config_manager: 配置管理器实例
-        
     Returns:
-        WeComNotificationService实例
+        WeComNotificationService: 企业微信通知服务实例
     """
-    webhook_url = config_manager.get("notification.wecom.webhook_url")
-    return WeComNotificationService(webhook_url)
+    try:
+        from src.config.config_manager import get_config, init_config
+        
+        # 初始化配置
+        init_config()
+        
+        # 获取企业微信Webhook URL配置
+        webhook_url = get_config("notification.wecom.webhook_url")
+        
+        if not webhook_url:
+            # 如果配置中没有，尝试从环境变量获取
+            import os
+            webhook_url = os.environ.get("WECOM_WEBHOOK_URL")
+            
+            if not webhook_url:
+                logger.warning("企业微信Webhook URL未配置，使用模拟服务")
+                # 创建一个模拟的服务实例，用于开发和测试环境
+                return MockWeComNotificationService()
+        
+        logger.info("创建企业微信通知服务实例")
+        return WeComNotificationService(webhook_url)
+    except Exception as e:
+        logger.error(f"创建企业微信通知服务实例失败: {str(e)}")
+        # 返回模拟服务，确保系统可以继续运行
+        return MockWeComNotificationService()
+
+
+class MockWeComNotificationService:
+    """模拟的企业微信通知服务，用于开发和测试环境"""
+    
+    def __init__(self):
+        logger.info("使用模拟企业微信通知服务")
+        
+    def send_markdown_notification(self, markdown_content: str, mentioned_list: Optional[List[str]] = None) -> Dict[str, Any]:
+        logger.info(f"模拟发送Markdown通知:\n{markdown_content}\n@用户: {mentioned_list or []}")
+        return {"errcode": 0, "errmsg": "ok"}
+    
+    def send_text_notification(self, text: str, mentioned_list: Optional[List[str]] = None) -> Dict[str, Any]:
+        logger.info(f"模拟发送文本通知:\n{text}\n@用户: {mentioned_list or []}")
+        return {"errcode": 0, "errmsg": "ok"}
+    
+    def create_code_change_report(self, commit_info: Dict[str, Any], file_changes: List[Dict[str, Any]], 
+                                impact_analysis: Dict[str, Any], test_suggestions: List[str], 
+                                links: Dict[str, str]) -> str:
+        # 调用真实服务的方法来生成报告
+        dummy_service = WeComNotificationService("dummy-url")
+        return dummy_service.create_code_change_report(
+            commit_info, file_changes, impact_analysis, test_suggestions, links
+        )
